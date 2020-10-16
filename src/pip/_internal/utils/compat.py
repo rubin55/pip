@@ -19,7 +19,9 @@ from pip._vendor.six import PY2, text_type
 from pip._internal.utils.typing import MYPY_CHECK_RUNNING
 
 if MYPY_CHECK_RUNNING:
-    from typing import Callable, Optional, Protocol, Text, Tuple, TypeVar, Union
+    from typing import (
+        Callable, Optional, Protocol, Text, Tuple, TypeVar, Union
+    )
 
     # Used in the @lru_cache polyfill.
     F = TypeVar('F')
