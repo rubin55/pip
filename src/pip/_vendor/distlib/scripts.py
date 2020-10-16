@@ -375,7 +375,17 @@ class ScriptMaker(object):
                 bits = '64'
             else:
                 bits = '32'
-            name = '%s%s.exe' % (kind, bits)
+
+            platform_suffix = ''
+            try:
+                import distutils.util
+                platform = distutils.util.get_platform()
+                if platform == 'win-arm64':
+                    platform_suffix = 'arm'
+            except Exception:
+                pass
+
+            name = '%s%s%s.exe' % (kind, bits, platform_suffix)
             # Issue 31: don't hardcode an absolute package name, but
             # determine it relative to the current package
             distlib_package = __name__.rsplit('.', 1)[0]
