@@ -38,32 +38,30 @@ To run the pip executable from your source tree during development, install pip
 locally using editable installation (inside a virtualenv).
 You can then invoke your local source tree pip normally.
 
-.. tabs::
+.. tab:: Unix/macOS
 
-   .. group-tab:: Unix/macOS
+    .. code-block:: shell
 
-      .. code-block:: shell
+        virtualenv venv # You can also use "python -m venv venv" from python3.3+
+        source venv/bin/activate
+        python -m pip install -e .
+        python -m pip --version
 
-         virtualenv venv # You can also use "python -m venv venv" from python3.3+
-         source venv/bin/activate
-         python -m pip install -e .
-         python -m pip --version
+.. tab:: Windows
 
-   .. group-tab:: Windows
+    .. code-block:: shell
 
-      .. code-block:: shell
-
-         virtualenv venv # You can also use "py -m venv venv" from python3.3+
-         venv\Scripts\activate
-         py -m pip install -e .
-         py -m pip --version
+        virtualenv venv # You can also use "py -m venv venv" from python3.3+
+        venv\Scripts\activate
+        py -m pip install -e .
+        py -m pip --version
 
 Running Tests
 =============
 
-pip's tests are written using the :pypi:`pytest` test framework, :pypi:`mock`
-and :pypi:`pretend`. :pypi:`tox` is used to automate the setup and execution of
-pip's tests.
+pip's tests are written using the :pypi:`pytest` test framework and
+:mod:`unittest.mock`. :pypi:`tox` is used to automate the setup and execution
+of pip's tests.
 
 It is preferable to run the tests in parallel for better experience during development,
 since the tests can take a long time to finish when run sequentially.
@@ -81,7 +79,7 @@ To run tests without parallelization, run:
     $ tox -e py36
 
 The example above runs tests against Python 3.6. You can also use other
-versions like ``py27`` and ``pypy3``.
+versions like ``py39`` and ``pypy3``.
 
 ``tox`` has been configured to forward any additional arguments it is given to
 ``pytest``. This enables the use of pytest's `rich CLI`_. As an example, you
@@ -159,9 +157,9 @@ in order to start contributing.
 * A guide on `triaging issues`_ for issue tracker
 * Getting started with Git
 
-   - `Hello World for Git`_
-   - `Understanding the GitHub flow`_
-   - `Start using Git on the command line`_
+  - `Hello World for Git`_
+  - `Understanding the GitHub flow`_
+  - `Start using Git on the command line`_
 
 
 .. _`open an issue`: https://github.com/pypa/pip/issues/new?title=Trouble+with+pip+development+environment

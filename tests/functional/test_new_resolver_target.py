@@ -7,7 +7,6 @@ from tests.lib.wheel import make_wheel
 
 @pytest.fixture()
 def make_fake_wheel(script):
-
     def _make_fake_wheel(wheel_tag):
         wheel_house = script.scratch_path.joinpath("wheelhouse")
         wheel_house.mkdir()
@@ -16,7 +15,7 @@ def make_fake_wheel(script):
             version="1.0",
             wheel_metadata_updates={"Tag": []},
         )
-        wheel_path = wheel_house.joinpath("fake-1.0-{}.whl".format(wheel_tag))
+        wheel_path = wheel_house.joinpath(f"fake-1.0-{wheel_tag}.whl")
         wheel_builder.save_to(wheel_path)
         return wheel_path
 
@@ -37,10 +36,12 @@ def test_new_resolver_target_checks_compatibility_failure(
 ):
     fake_wheel_tag = "fakepy1-fakeabi-fakeplat"
     args = [
-        "install", "--use-feature=2020-resolver",
+        "install",
         "--only-binary=:all:",
-        "--no-cache-dir", "--no-index",
-        "--target", str(script.scratch_path.joinpath("target")),
+        "--no-cache-dir",
+        "--no-index",
+        "--target",
+        str(script.scratch_path.joinpath("target")),
         make_fake_wheel(fake_wheel_tag),
     ]
     if implementation:
@@ -58,7 +59,7 @@ def test_new_resolver_target_checks_compatibility_failure(
         abi,
         platform,
     )
-    wheel_tag_matches = (args_tag == fake_wheel_tag)
+    wheel_tag_matches = args_tag == fake_wheel_tag
 
     result = script.pip(*args, expect_error=(not wheel_tag_matches))
 

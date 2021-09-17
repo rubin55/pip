@@ -7,7 +7,7 @@ Release process
 Release Cadence
 ===============
 
-The pip project has a release cadence of releasing whatever is on ``master``
+The pip project has a release cadence of releasing whatever is on ``main``
 every 3 months. This gives users a predictable pattern for when releases
 are going to happen and prevents locking up improvements for fixes for long
 periods of time, while still preventing massively fracturing the user base
@@ -22,8 +22,8 @@ The release manager may, at their discretion, choose whether or not there
 will be a pre-release period for a release, and if there is may extend that
 period into the next month if needed.
 
-Because releases are made direct from the ``master`` branch, it is essential
-that ``master`` is always in a releasable state. It is acceptable to merge
+Because releases are made direct from the ``main`` branch, it is essential
+that ``main`` is always in a releasable state. It is acceptable to merge
 PRs that partially implement a new feature, but only if the partially
 implemented version is usable in that state (for example, with reduced
 functionality or disabled by default). In the case where a merged PR is found
@@ -65,19 +65,14 @@ their merits.
   ``pip._internal.utils.deprecation.deprecated``. The function is not a part of
   pip's public API.
 
+.. _`Python 2 Support`:
+
 Python 2 Support
 ----------------
 
-pip will continue to ensure that it runs on Python 2.7 after the CPython 2.7
-EOL date. Support for Python 2.7 will be dropped, if bugs in Python 2.7 itself
-make this necessary (which is unlikely) or in pip 21.0 (Jan 2021), whichever is
-earlier.
-
-However, bugs reported with pip which only occur on Python 2.7 would likely not
-be addressed directly by pip's maintainers. Pull Requests to fix Python 2.7
-only bugs will be considered, and merged (subject to normal review processes).
-Note that there may be delays due to the lack of developer resources for
-reviewing such pull requests.
+pip 20.3 was the last version of pip that supported Python 2. Bugs reported
+with pip which only occur on Python 2.7 will likely be closed as "won't fix"
+issues by pip's maintainers.
 
 Python Support Policy
 ---------------------
@@ -121,15 +116,17 @@ Release Process
 Creating a new release
 ----------------------
 
-#. Checkout the current pip ``master`` branch.
 #. Ensure you have the latest ``nox`` installed.
+#. Create a new ``release/YY.N`` branch off ``main`` and switch to it.
 #. Prepare for release using ``nox -s prepare-release -- YY.N``.
    This will update the relevant files and tag the correct commit.
+#. Submit the ``release/YY.N`` branch as a pull request and ensure CI passes.
+   Merge the changes back into ``main`` and pull them back locally.
 #. Build the release artifacts using ``nox -s build-release -- YY.N``.
    This will checkout the tag, generate the distribution files to be
-   uploaded and checkout the master branch again.
+   uploaded and checkout the main branch again.
 #. Upload the release to PyPI using ``nox -s upload-release -- YY.N``.
-#. Push all of the changes including the tag.
+#. Push the tag created by ``prepare-release``.
 #. Regenerate the ``get-pip.py`` script in the `get-pip repository`_ (as
    documented there) and commit the results.
 #. Submit a Pull Request to `CPython`_ adding the new version of pip (and upgrading
@@ -160,20 +157,20 @@ Creating a bug-fix release
 
 Sometimes we need to release a bugfix release of the form ``YY.N.Z+1``. In
 order to create one of these the changes should already be merged into the
-``master`` branch.
+``main`` branch.
 
 #. Create a new ``release/YY.N.Z+1`` branch off of the ``YY.N`` tag using the
    command ``git checkout -b release/YY.N.Z+1 YY.N``.
-#. Cherry pick the fixed commits off of the ``master`` branch, fixing any
+#. Cherry pick the fixed commits off of the ``main`` branch, fixing any
    conflicts.
 #. Run ``nox -s prepare-release -- YY.N.Z+1``.
-#. Merge master into your release branch and drop the news files that have been
+#. Merge main into your release branch and drop the news files that have been
    included in your release (otherwise they would also appear in the ``YY.N+1``
    changelog)
 #. Push the ``release/YY.N.Z+1`` branch to github and submit a PR for it against
-   the ``master`` branch and wait for the tests to run.
-#. Once tests run, merge the ``release/YY.N.Z+1`` branch into master, and follow
-   the above release process starting with step 4.
+   the ``main`` branch and wait for the tests to run.
+#. Once tests run, merge the ``release/YY.N.Z+1`` branch into ``main``, and
+   follow the above release process starting with step 5.
 
 .. _`get-pip repository`: https://github.com/pypa/get-pip
 .. _`psf-salt repository`: https://github.com/python/psf-salt

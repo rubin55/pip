@@ -1,24 +1,19 @@
 import os
+from contextlib import ExitStack
 from email import message_from_string
 from io import BytesIO
 from zipfile import ZipFile
 
 import pytest
-from pip._vendor.contextlib2 import ExitStack
 
 from pip._internal.exceptions import UnsupportedWheel
 from pip._internal.utils import wheel
-from pip._internal.utils.typing import MYPY_CHECK_RUNNING
-from tests.lib import skip_if_python2
-
-if MYPY_CHECK_RUNNING:
-    from tests.lib.path import Path
+from tests.lib.path import Path
 
 
 @pytest.fixture
 def zip_dir():
-    def make_zip(path):
-        # type: (Path) -> ZipFile
+    def make_zip(path: Path) -> ZipFile:
         buf = BytesIO()
         with ZipFile(buf, "w", allowZip64=True) as z:
             for dirpath, _, filenames in os.walk(path):
@@ -73,9 +68,7 @@ def test_wheel_dist_info_dir_wrong_name(tmpdir, zip_dir):
 
 
 def test_wheel_version_ok(tmpdir, data):
-    assert wheel.wheel_version(
-        message_from_string("Wheel-Version: 1.9")
-    ) == (1, 9)
+    assert wheel.wheel_version(message_from_string("Wheel-Version: 1.9")) == (1, 9)
 
 
 def test_wheel_metadata_fails_missing_wheel(tmpdir, zip_dir):
@@ -88,7 +81,6 @@ def test_wheel_metadata_fails_missing_wheel(tmpdir, zip_dir):
     assert "could not read" in str(e.value)
 
 
-@skip_if_python2
 def test_wheel_metadata_fails_on_bad_encoding(tmpdir, zip_dir):
     dist_info_dir = tmpdir / "simple-0.1.0.dist-info"
     dist_info_dir.mkdir()
@@ -106,21 +98,22 @@ def test_wheel_version_fails_on_no_wheel_version():
     assert "missing Wheel-Version" in str(e.value)
 
 
-@pytest.mark.parametrize("version", [
-    ("",),
-    ("1.b",),
-    ("1.",),
-])
+@pytest.mark.parametrize(
+    "version",
+    [
+        ("",),
+        ("1.b",),
+        ("1.",),
+    ],
+)
 def test_wheel_version_fails_on_bad_wheel_version(version):
     with pytest.raises(UnsupportedWheel) as e:
-        wheel.wheel_version(
-            message_from_string("Wheel-Version: {}".format(version))
-        )
+        wheel.wheel_version(message_from_string(f"Wheel-Version: {version}"))
     assert "invalid Wheel-Version" in str(e.value)
 
 
 def test_check_compatibility():
-    name = 'test'
+    name = "test"
     vc = wheel.VERSION_COMPATIBLE
 
     # Major version is higher - should be incompatible
@@ -129,7 +122,7 @@ def test_check_compatibility():
     # test raises with correct error
     with pytest.raises(UnsupportedWheel) as e:
         wheel.check_compatibility(higher_v, name)
-    assert 'is not compatible' in str(e)
+    assert "is not compatible" in str(e)
 
     # Should only log.warning - minor version is greater
     higher_v = (vc[0], vc[1] + 1)

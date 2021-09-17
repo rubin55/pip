@@ -4,8 +4,7 @@
 from io import BytesIO
 
 
-class FakeStream(object):
-
+class FakeStream:
     def __init__(self, contents):
         self._io = BytesIO(contents)
 
@@ -19,8 +18,7 @@ class FakeStream(object):
         pass
 
 
-class MockResponse(object):
-
+class MockResponse:
     def __init__(self, contents):
         self.raw = FakeStream(contents)
         self.content = contents
@@ -29,12 +27,11 @@ class MockResponse(object):
         self.status_code = 200
         self.connection = None
         self.url = None
-        self.headers = {'Content-Length': len(contents)}
+        self.headers = {"Content-Length": len(contents)}
         self.history = []
 
 
-class MockConnection(object):
-
+class MockConnection:
     def _send(self, req, **kwargs):
         raise NotImplementedError("_send must be overridden for tests")
 
@@ -45,8 +42,7 @@ class MockConnection(object):
         return resp
 
 
-class MockRequest(object):
-
+class MockRequest:
     def __init__(self, url):
         self.url = url
         self.headers = {}

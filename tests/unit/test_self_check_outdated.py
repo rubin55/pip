@@ -1,14 +1,17 @@
 import datetime
+import functools
 import json
 import os
 import sys
+from unittest import mock
 
-import freezegun
-import pretend
+import freezegun  # type: ignore
 import pytest
+from pip._vendor.packaging.version import parse as parse_version
 
 from pip._internal import self_outdated_check
 from pip._internal.models.candidate import InstallationCandidate
+from pip._internal.models.link import Link
 from pip._internal.self_outdated_check import (
     SelfCheckState,
     logger,
@@ -17,22 +20,31 @@ from pip._internal.self_outdated_check import (
 from tests.lib.path import Path
 
 
-class MockBestCandidateResult(object):
+class MockBestCandidateResult:
     def __init__(self, best):
         self.best_candidate = best
 
 
-class MockPackageFinder(object):
+class MockPackageFinder:
 
-    BASE_URL = 'https://pypi.org/simple/pip-{0}.tar.gz'
-    PIP_PROJECT_NAME = 'pip'
+    BASE_URL = "https://pypi.org/simple/pip-{0}.tar.gz"
+    PIP_PROJECT_NAME = "pip"
     INSTALLATION_CANDIDATES = [
-        InstallationCandidate(PIP_PROJECT_NAME, '6.9.0',
-                              BASE_URL.format('6.9.0')),
-        InstallationCandidate(PIP_PROJECT_NAME, '3.3.1',
-                              BASE_URL.format('3.3.1')),
-        InstallationCandidate(PIP_PROJECT_NAME, '1.0',
-                              BASE_URL.format('1.0')),
+        InstallationCandidate(
+            PIP_PROJECT_NAME,
+            "6.9.0",
+            Link(BASE_URL.format("6.9.0")),
+        ),
+        InstallationCandidate(
+            PIP_PROJECT_NAME,
+            "3.3.1",
+            Link(BASE_URL.format("3.3.1")),
+        ),
+        InstallationCandidate(
+            PIP_PROJECT_NAME,
+            "1.0",
+            Link(BASE_URL.format("1.0")),
+        ),
     ]
 
     @classmethod
@@ -43,70 +55,83 @@ class MockPackageFinder(object):
         return MockBestCandidateResult(self.INSTALLATION_CANDIDATES[0])
 
 
-class MockDistribution(object):
-    def __init__(self, installer):
+class MockDistribution:
+    def __init__(self, installer, version):
         self.installer = installer
+        self.version = parse_version(version)
 
-    def has_metadata(self, name):
-        return name == 'INSTALLER'
 
-    def get_metadata_lines(self, name):
-        if self.has_metadata(name):
-            yield self.installer
-        else:
-            raise NotImplementedError('nope')
+class MockEnvironment:
+    def __init__(self, installer, installed_version):
+        self.installer = installer
+        self.installed_version = installed_version
+
+    def get_distribution(self, name):
+        if self.installed_version is None:
+            return None
+        return MockDistribution(self.installer, self.installed_version)
 
 
 def _options():
-    ''' Some default options that we pass to
-    self_outdated_check.pip_self_version_check '''
-    return pretend.stub(
-        find_links=[], index_url='default_url', extra_index_urls=[],
-        no_index=False, pre=False, cache_dir='',
+    """Some default options that we pass to
+    self_outdated_check.pip_self_version_check"""
+    return mock.Mock(
+        find_links=[],
+        index_url="default_url",
+        extra_index_urls=[],
+        no_index=False,
+        pre=False,
+        cache_dir="",
     )
 
 
 @pytest.mark.parametrize(
     [
-        'stored_time',
-        'installed_ver',
-        'new_ver',
-        'installer',
-        'check_if_upgrade_required',
-        'check_warn_logs',
+        "stored_time",
+        "installed_ver",
+        "new_ver",
+        "installer",
+        "check_if_upgrade_required",
+        "check_warn_logs",
     ],
     [
         # Test we return None when installed version is None
-        ('1970-01-01T10:00:00Z', None, '1.0', 'pip', False, False),
+        ("1970-01-01T10:00:00Z", None, "1.0", "pip", False, False),
         # Need an upgrade - upgrade warning should print
-        ('1970-01-01T10:00:00Z', '1.0', '6.9.0', 'pip', True, True),
+        ("1970-01-01T10:00:00Z", "1.0", "6.9.0", "pip", True, True),
         # Upgrade available, pip installed via rpm - warning should not print
-        ('1970-01-01T10:00:00Z', '1.0', '6.9.0', 'rpm', True, False),
+        ("1970-01-01T10:00:00Z", "1.0", "6.9.0", "rpm", True, False),
         # No upgrade - upgrade warning should not print
-        ('1970-01-9T10:00:00Z', '6.9.0', '6.9.0', 'pip', False, False),
-    ]
+        ("1970-01-9T10:00:00Z", "6.9.0", "6.9.0", "pip", False, False),
+    ],
 )
-def test_pip_self_version_check(monkeypatch, stored_time, installed_ver,
-                                new_ver, installer,
-                                check_if_upgrade_required, check_warn_logs):
-    monkeypatch.setattr(self_outdated_check, 'get_installed_version',
-                        lambda name: installed_ver)
-    monkeypatch.setattr(self_outdated_check, 'PackageFinder',
-                        MockPackageFinder)
-    monkeypatch.setattr(logger, 'warning',
-                        pretend.call_recorder(lambda *a, **kw: None))
-    monkeypatch.setattr(logger, 'debug',
-                        pretend.call_recorder(lambda s, exc_info=None: None))
-    monkeypatch.setattr(self_outdated_check, 'get_distribution',
-                        lambda name: MockDistribution(installer))
-
-    fake_state = pretend.stub(
-        state={"last_check": stored_time, 'pypi_version': installed_ver},
-        save=pretend.call_recorder(lambda v, t: None),
+def test_pip_self_version_check(
+    monkeypatch,
+    stored_time,
+    installed_ver,
+    new_ver,
+    installer,
+    check_if_upgrade_required,
+    check_warn_logs,
+):
+    monkeypatch.setattr(
+        self_outdated_check,
+        "get_default_environment",
+        functools.partial(MockEnvironment, installer, installed_ver),
     )
     monkeypatch.setattr(
-        self_outdated_check, 'SelfCheckState', lambda **kw: fake_state
+        self_outdated_check,
+        "PackageFinder",
+        MockPackageFinder,
     )
+    monkeypatch.setattr(logger, "warning", mock.Mock())
+    monkeypatch.setattr(logger, "debug", mock.Mock())
+
+    fake_state = mock.Mock(
+        state={"last_check": stored_time, "pypi_version": installed_ver},
+        save=mock.Mock(),
+    )
+    monkeypatch.setattr(self_outdated_check, "SelfCheckState", lambda **kw: fake_state)
 
     with freezegun.freeze_time(
         "1970-01-09 10:00:00",
@@ -114,7 +139,7 @@ def test_pip_self_version_check(monkeypatch, stored_time, installed_ver,
             "six.moves",
             "pip._vendor.six.moves",
             "pip._vendor.requests.packages.urllib3.packages.six.moves",
-        ]
+        ],
     ):
         latest_pypi_version = pip_self_version_check(None, _options())
 
@@ -123,35 +148,34 @@ def test_pip_self_version_check(monkeypatch, stored_time, installed_ver,
         assert not latest_pypi_version
     # See that we saved the correct version
     elif check_if_upgrade_required:
-        assert fake_state.save.calls == [
-            pretend.call(new_ver, datetime.datetime(1970, 1, 9, 10, 00, 00)),
+        assert fake_state.save.call_args_list == [
+            mock.call(new_ver, datetime.datetime(1970, 1, 9, 10, 00, 00)),
         ]
     else:
         # Make sure no Exceptions
-        assert not logger.debug.calls
+        assert not logger.debug.call_args_list
         # See that save was not called
-        assert fake_state.save.calls == []
+        assert fake_state.save.call_args_list == []
 
     # Ensure we warn the user or not
     if check_warn_logs:
-        assert len(logger.warning.calls) == 1
+        assert logger.warning.call_count == 1
     else:
-        assert len(logger.warning.calls) == 0
+        assert logger.warning.call_count == 0
 
 
-statefile_name_case_1 = (
-    "fcd2d5175dd33d5df759ee7b045264230205ef837bf9f582f7c3ada7"
+statefile_name_case_1 = "fcd2d5175dd33d5df759ee7b045264230205ef837bf9f582f7c3ada7"
+
+statefile_name_case_2 = "902cecc0745b8ecf2509ba473f3556f0ba222fedc6df433acda24aa5"
+
+
+@pytest.mark.parametrize(
+    "key,expected",
+    [
+        ("/hello/world/venv", statefile_name_case_1),
+        ("C:\\Users\\User\\Desktop\\venv", statefile_name_case_2),
+    ],
 )
-
-statefile_name_case_2 = (
-    "902cecc0745b8ecf2509ba473f3556f0ba222fedc6df433acda24aa5"
-)
-
-
-@pytest.mark.parametrize("key,expected", [
-    ("/hello/world/venv", statefile_name_case_1),
-    ("C:\\Users\\User\\Desktop\\venv", statefile_name_case_2),
-])
 def test_get_statefile_name_known_values(key, expected):
     assert expected == self_outdated_check._get_statefile_name(key)
 
@@ -223,8 +247,7 @@ def test_self_check_state_writes_expected_statefile(monkeypatch, tmpdir):
 
     expected = {
         "key": key,
-        "last_check": last_check.strftime(
-            self_outdated_check.SELFCHECK_DATE_FMT),
+        "last_check": last_check.strftime(self_outdated_check.SELFCHECK_DATE_FMT),
         "pypi_version": pypi_version,
     }
     assert expected == saved
